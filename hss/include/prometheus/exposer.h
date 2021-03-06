@@ -2,29 +2,45 @@
 
 #include <atomic>
 #include <cstdint>
+#include <functional>
 #include <memory>
+#include <string>
+#include <vector>
 
-#include "histogram.h"
-#include "registry.h"
+#include "prometheus/collectable.h"
+#include "prometheus/detail/pull_export.h"
+#include "prometheus/registry.h"
 
 class CivetServer;
 
 namespace prometheus {
 
 namespace detail {
+class Endpoint;
 class MetricsHandler;
 }  // namespace detail
 
-class Exposer {
+class PROMETHEUS_CPP_PULL_EXPORT Exposer {
  public:
-  Exposer(const std::string& bind_address);
+  explicit Exposer(const std::string& bind_address,
+                   const std::size_t num_threads = 2);
+  explicit Exposer(std::vector<std::string> options);
   ~Exposer();
-  void RegisterCollectable(const std::weak_ptr<Collectable>& collectable);
+  void RegisterCollectable(const std::weak_ptr<Collectable>& collectable,
+                           const std::string& uri = std::string("/metrics"));
+
+  void RegisterAuth(
+      std::function<bool(const std::string&, const std::string&)> authCB,
+      const std::string& realm = "Prometheus-cpp Exporter",
+      const std::string& uri = std::string("/metrics"));
+
+  std::vector<int> GetListeningPorts() const;
 
  private:
+  detail::Endpoint& GetEndpointForUri(const std::string& uri);
+
   std::unique_ptr<CivetServer> server_;
-  std::vector<std::weak_ptr<Collectable>> collectables_;
-  std::shared_ptr<Registry> exposer_registry_;
-  std::unique_ptr<detail::MetricsHandler> metrics_handler_;
+  std::vector<std::unique_ptr<detail::Endpoint>> endpoints_;
 };
-}
+
+}  // namespace prometheus
