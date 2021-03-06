@@ -38,3 +38,4 @@
 #  endif
 #endif
 
+#endif /* PROMETHEUS_CPP_PULL_EXPORT_H */
